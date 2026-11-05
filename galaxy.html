@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DEEP SPACE SCAN // Babel-OS</title>
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#050806;
+  --surface:#0a120d;
+  --track:#0a120d;
+  --fg:#7dff7d;
+  --fg-bright:#d4ffd4;
+  --muted:#2c5c2c;
+  --accent:#7dff7d;
+  --accent2:#4aff4a;
+  --border:#1a3a1a;
+  --border-bright:#4aff4a;
+  --font:'Share Tech Mono', monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px)}
+[hidden]{display:none!important}
+body{
+  margin:0;background:var(--bg);color:var(--fg);
+  font:13px/1.5 var(--font);
+  -webkit-font-smoothing:antialiased;
+  text-transform:uppercase;
+  min-height:100vh;
+  position:relative;
+  overflow-x:hidden;
+}
+
+/* CRT Scanlines */
+body::before{
+  content:" ";display:block;position:fixed;top:0;left:0;bottom:0;right:0;
+  background:
+    linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.35) 50%),
+    linear-gradient(90deg, rgba(255,0,0,0.04), rgba(0,255,0,0.02), rgba(0,0,255,0.04));
+  z-index:50;background-size:100% 2px, 3px 100%;
+  pointer-events:none;
+}
+::selection{background:var(--fg);color:var(--bg)}
+
+a{color:var(--fg);text-decoration:none;border-bottom:1px dotted var(--fg)}
+a:hover{background:var(--fg);color:var(--bg)}
+
+label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-bottom:8px}
+label b{color:var(--fg-bright);font-weight:700}
+
+/* Panels */
+.neu{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:0;
+  box-shadow:none;
+  position:relative;
+}
+.neu::before,.neu::after{content:'';position:absolute;width:8px;height:8px;border:1.5px solid var(--fg);pointer-events:none;z-index:2}
+.neu::before{top:-1px;left:-1px;border-right:none;border-bottom:none}
+.neu::after{bottom:-1px;right:-1px;border-left:none;border-top:none}
+
+/* Buttons */
+.btn{
+  border:1px solid var(--border);border-radius:0;
+  background:transparent;color:var(--fg);box-shadow:none;
+  font:inherit;font-size:11.5px;font-weight:700;
+  letter-spacing:.04em;text-transform:uppercase;
+  cursor:pointer;transition:all .1s;
+  padding:8px 14px;display:inline-flex;align-items:center;gap:4px;
+}
+.btn:hover{background:rgba(125,255,125,0.08);border-color:var(--fg-bright);box-shadow:0 0 8px rgba(125,255,125,0.3)}
+.btn:active{background:var(--fg);color:var(--bg)}
+.btn.primary{background:var(--fg);color:var(--bg);font-weight:700}
+.btn.primary:hover{background:var(--fg-bright);border-color:var(--fg-bright)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* Address bar */
+.address-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.address-bar input{flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--border);border-radius:0;background:var(--bg);color:var(--fg-bright);font:12px var(--font);letter-spacing:.3px;text-transform:uppercase}
+.address-bar input:focus{outline:none;border-color:var(--fg)}
+
+/* Radar Screen (Canvas Container) */
+.radar-wrap{
+  position:relative;
+  aspect-ratio:16/9;
+  background:#000;
+  border:1px solid var(--border);
+  box-shadow:inset 0 0 40px rgba(125,255,125,0.15);
+  overflow:hidden;
+  margin-bottom:14px;
+}
+.radar-wrap::before,.radar-wrap::after{
+  content:'';position:absolute;width:20px;height:20px;
+  border:2px solid var(--fg);pointer-events:none;z-index:5;
+}
+.radar-wrap::before{top:8px;left:8px;border-right:none;border-bottom:none}
+.radar-wrap::after{bottom:8px;right:8px;border-left:none;border-top:none}
+
+.radar-hud{
+  position:absolute;top:12px;left:12px;right:12px;
+  display:flex;justify-content:space-between;
+  color:var(--fg);font-size:10px;letter-spacing:.1em;
+  z-index:4;pointer-events:none;
+  text-shadow:0 0 4px var(--fg);
+}
+.radar-hud span{opacity:0.8}
+
+#galaxy{
+  display:block;width:100%;height:100%;
+  image-rendering:auto;
+  filter: sepia(0.4) hue-rotate(70deg) saturate(1.5) contrast(1.2);
+}
+
+/* Canvas Controls overlay */
+.canvas-controls{
+  position:absolute;top:12px;right:12px;
+  display:flex;gap:6px;z-index:10;
+}
+.c-btn{
+  width:34px;height:34px;border-radius:0;
+  border:1px solid var(--border);background:rgba(0,0,0,0.6);
+  color:var(--fg);font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .1s;backdrop-filter:blur(4px);
+}
+.c-btn:hover{border-color:var(--fg);background:rgba(125,255,125,0.1);box-shadow:0 0 10px var(--fg)}
+.c-btn:active{background:var(--fg);color:#000}
+
+/* Telemetry Meta Grid */
+.telemetry{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:10px;
+  margin-bottom:14px;
+}
+.tele-item{
+  background:#000;
+  border:1px solid var(--border);
+  padding:10px;
+  font-size:11px;
+}
+.tele-label{color:var(--muted);margin-bottom:4px;font-size:10px;letter-spacing:.06em}
+.tele-val{color:var(--fg-bright);font-weight:700;font-size:13px;word-break:break-word}
+
+/* Actions */
+.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+
+/* Main Layout */
+main{max-width:920px;margin:0 auto;padding:16px 14px 48px;position:relative;z-index:10}
+h1{font-size:20px;color:var(--fg-bright);letter-spacing:2px;margin:6px 2px 4px;font-weight:700}
+.sub{margin:0 2px 16px;font-size:11px;color:var(--muted);letter-spacing:.05em}
+
+.topnav{
+  display:flex;gap:14px;font-size:11px;
+  margin:0 2px 8px;flex-wrap:wrap;
+  padding-bottom:10px;border-bottom:1px dashed var(--border);
+}
+.topnav a{text-decoration:none;font-weight:700;color:var(--muted);border-bottom:none}
+.topnav a:hover{color:var(--fg);background:transparent}
+
+.card{padding:14px;margin-bottom:12px}
+
+/* Hintbar */
+.hintbar{font-size:10.5px;color:var(--muted);text-align:center;margin-top:20px;letter-spacing:.05em}
+
+/* Glitch Title */
+.glitch{position:relative;display:inline-block}
+.glitch::before,.glitch::after{content:attr(data-text);position:absolute;top:0;left:0;width:100%;height:100%;background:var(--bg);overflow:hidden}
+.glitch::before{left:1px;text-shadow:-1px 0 red;animation:glitch-anim 2s infinite linear alternate-reverse}
+.glitch::after{left:-1px;text-shadow:-1px 0 blue;animation:glitch-anim2 3s infinite linear alternate-reverse}
+@keyframes glitch-anim{0%{clip:rect(10px,9999px,50px,0)}20%{clip:rect(30px,9999px,80px,0)}40%{clip:rect(50px,9999px,20px,0)}60%{clip:rect(80px,9999px,60px,0)}80%{clip:rect(20px,9999px,90px,0)}100%{clip:rect(60px,9999px,10px,0)}}
+@keyframes glitch-anim2{0%{clip:rect(70px,9999px,30px,0)}20%{clip:rect(40px,9999px,70px,0)}40%{clip:rect(10px,9999px,40px,0)}60%{clip:rect(90px,9999px,80px,0)}80%{clip:rect(30px,9999px,50px,0)}100%{clip:rect(50px,9999px,20px,0)}}
+
+/* Mobile */
+@media (max-width:600px){
+  h1{font-size:16px}
+  .btn{padding:8px 11px;font-size:10.5px}
+  .glitch::before,.glitch::after{display:none}
+  .radar-hud{display:none}
+}
+</style>
+</head>
+<body>
+<main>
+<nav class="topnav"><a href="index.html">&lt; RETURN</a><a href="music.html">[ AUDIO ]</a><a href="image.html">[ VISUAL ]</a><a href="code.html">[ CODE ]</a><a href="ecosystem.html">[ BIO ]</a><a href="aquarium.html">[ OCEAN ]</a><a href="pair.html">[ MULTI ]</a></nav>
+<h1 class="glitch" data-text="DEEP SPACE SCAN">DEEP SPACE SCAN</h1>
+<p class="sub">[ SECTOR: GALAXY ] [ 19 PARAMS / 5 TYPES ] [ ~1.7x10^20 FRAGMENTS ]</p>
+
+<div class="card neu">
+  <div class="address-bar">
+    <input id="addr" type="text" placeholder="ADDRESS..." autocomplete="off" spellcheck="false" aria-label="Address">
+    <button class="btn primary" id="go" type="button">&gt; EXECUTE</button>
+    <button class="btn" id="prev" type="button" aria-label="Previous">‹</button>
+    <button class="btn" id="next" type="button" aria-label="Next">›</button>
+    <button class="btn" id="rand" type="button" aria-label="Random">🎲</button>
+    <button class="btn" id="copy" type="button">COPY_ADDR</button>
+  </div>
+
+  <div class="radar-wrap">
+    <div class="radar-hud">
+      <span>SCAN: ACTIVE</span>
+      <span id="hud-coord">COORD: 0.00, 0.00</span>
+    </div>
+    <div class="canvas-controls">
+      <button class="c-btn" id="pause-btn" type="button" title="Pause" aria-label="Pause">⏸</button>
+    </div>
+    <canvas id="galaxy" width="960" height="540" role="img" aria-label="Galaxy scan"></canvas>
+  </div>
+
+  <div class="telemetry">
+    <div class="tele-item">
+      <div class="tele-label">CLASSIFICATION</div>
+      <div class="tele-val" id="t-type">—</div>
+    </div>
+    <div class="tele-item">
+      <div class="tele-label">STAR COUNT</div>
+      <div class="tele-val" id="t-stars">—</div>
+    </div>
+    <div class="tele-item">
+      <div class="tele-label">SPECTRAL CLASS</div>
+      <div class="tele-val" id="t-mood">—</div>
+    </div>
+    <div class="tele-item">
+      <div class="tele-label">NEBULA DENSITY</div>
+      <div class="tele-val" id="t-neb">—</div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn" id="png" type="button">📥 EXPORT_SCAN</button>
+    <button class="btn" id="reset" type="button">🔄 RE-CALIBRATE</button>
+  </div>
+</div>
+
+<p class="hintbar">SHORTCUTS: [R] RANDOM · [←][→] PREV/NEXT · [C] COPY · [SPACE] PAUSE SCAN</p>
+</main>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   PARAMETERS
+   ============================================================ */
+var PARAMS = [
+  { name: 'galaxyType',       radix: 5 },
+  { name: 'arms',             radix: 6 },
+  { name: 'armTightness',     radix: 5 },
+  { name: 'starCount',        radix: 5 },
+  { name: 'starColorTemp',    radix: 5 },
+  { name: 'starColorVar',     radix: 4 },
+  { name: 'coreSize',         radix: 5 },
+  { name: 'coreBrightness',   radix: 4 },
+  { name: 'coreColor',        radix: 6 },
+  { name: 'nebulaCount',      radix: 4 },
+  { name: 'nebulaHue',        radix: 8 },
+  { name: 'nebulaOpacity',    radix: 3 },
+  { name: 'dustLanes',        radix: 3 },
+  { name: 'companionCount',   radix: 3 },
+  { name: 'rotationSpeed',    radix: 4 },
+  { name: 'rotationDirection',radix: 2 },
+  { name: 'bgStars',          radix: 3 },
+  { name: 'tilt',             radix: 3 },
+  { name: 'seed',             radix: 16777216 }
+];
+
+var TOTAL = PARAMS.reduce(function(a,p){ return a * BigInt(p.radix); }, 1n);
+
+/* ============================================================
+   LOOKUP TABLES
+   ============================================================ */
+var TYPE_NAMES = ['SPIRAL','ELLIPTICAL','IRREGULAR','RING','LENTICULAR'];
+var MOOD_NAMES = ['YOUNG & HOT','BALANCED','WARM','MATURE','ANCIENT'];
+
+var STAR_COLORS = [
+  [200, 220, 255],
+  [255, 255, 255],
+  [255, 240, 200],
+  [255, 200, 150],
+  [255, 150, 100]
+];
+
+var STAR_COUNTS = [400, 1200, 2500, 5000, 9000];
+
+var CORE_COLORS = [
+  [255, 255, 255],
+  [255, 250, 220],
+  [255, 220, 180],
+  [200, 220, 255],
+  [255, 180, 200],
+  [180, 150, 255]
+];
+
+var ROTATION_SPEEDS = [0.03, 0.06, 0.12, 0.25];
+var BG_STAR_COUNTS = [60, 200, 500];
+var TILTS = [1.0, 0.6, 0.25];
+
+/* ============================================================
+   BASE-62
+   ============================================================ */
+var B62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+function toB62(n){ if(n===0n) return '0'; var s=''; while(n>0n){ s=B62[Number(n%62n)]+s; n/=62n; } return s; }
+function fromB62(s){ var n=0n; for(var i=0;i<s.length;i++){ var k=B62.indexOf(s[i]); if(k<0) return null; n=n*62n+BigInt(k); } return n; }
+
+function decode(loc){
+  var p = {}, r = loc;
+  for (var i = 0; i < PARAMS.length; i++){
+    p[PARAMS[i].name] = Number(r % BigInt(PARAMS[i].radix));
+    r = r / BigInt(PARAMS[i].radix);
+  }
+  return p;
+}
+
+function randomLoc(){
+  var buf = new Uint8Array(16);
+  try { crypto.getRandomValues(buf); }
+  catch(e){ for (var i=0;i<16;i++) buf[i] = Math.floor(Math.random()*256); }
+  var x = 0n;
+  for (var j=0;j<16;j++) x = (x << 8n) | BigInt(buf[j]);
+  return x % TOTAL;
+}
+
+/* ============================================================
+   PRNG
+   ============================================================ */
+function mulberry32(seed){
+  return function(){
+    seed = seed + 0x6D2B79F5 | 0;
+    var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function gaussian(rand){
+  var u = 0, v = 0;
+  while (u === 0) u = rand();
+  while (v === 0) v = rand();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+/* ============================================================
+   SCENE
+   ============================================================ */
+var canvas = document.getElementById('galaxy');
+var ctx = canvas.getContext('2d');
+var W = 960, H = 540;
+
+var currentLoc = 0n;
+var params = null;
+var scene = null;
+var paused = false;
+var startTime = performance.now();
+var lastFrame = startTime;
+
+function generateScene(p, rand){
+  var cx = W / 2;
+  var cy = H / 2;
+  var tilt = TILTS[p.tilt];
+  var maxR = Math.min(W / 2, (H / 2) / tilt) * 0.82;
+
+  var scene = {
+    cx: cx, cy: cy, maxR: maxR, tilt: tilt,
+    stars: [], nebulae: [], companions: [], bgStars: [], shootingStars: []
+  };
+
+  var baseColor = STAR_COLORS[p.starColorTemp];
+  var colorVar = [0, 0.25, 0.55, 1.0][p.starColorVar];
+  var starCount = STAR_COUNTS[p.starCount];
+
+  var type = p.galaxyType;
+
+  if (type === 0){
+    var armCount = p.arms + 2;
+    var tightness = [0.8, 1.2, 1.6, 2.0, 2.4][p.armTightness];
+
+    for (var i = 0; i < starCount; i++){
+      var arm = Math.floor(rand() * armCount);
+      var armAngle = (arm / armCount) * Math.PI * 2;
+      var t = Math.pow(rand(), 0.55);
+      var theta = armAngle + t * tightness * Math.PI * 2;
+      var r = t * maxR;
+
+      var scatter = gaussian(rand) * maxR * 0.08 * (1 - t * 0.4);
+      var perp = theta + Math.PI / 2;
+
+      var x = cx + Math.cos(theta) * r + Math.cos(perp) * scatter;
+      var y = cy + Math.sin(theta) * r + Math.sin(perp) * scatter;
+
+      scene.stars.push(makeStar(x, y, baseColor, colorVar, rand));
+    }
+    for (var j = 0; j < starCount * 0.15; j++){
+      var cr = Math.sqrt(rand()) * maxR * 0.25;
+      var ca = rand() * Math.PI * 2;
+      scene.stars.push(makeStar(cx + Math.cos(ca) * cr, cy + Math.sin(ca) * cr, baseColor, colorVar, rand));
+    }
+  } else if (type === 1){
+    var ecc = 0.5 + rand() * 0.4;
+    for (var e = 0; e < starCount; e++){
+      var er = Math.pow(rand(), 0.7) * maxR;
+      var ea = rand() * Math.PI * 2;
+      var ex = cx + Math.cos(ea) * er;
+      var ey = cy + Math.sin(ea) * er * ecc;
+      scene.stars.push(makeStar(ex, ey, baseColor, colorVar, rand));
+    }
+  } else if (type === 2){
+    var clusterCount = 3 + Math.floor(rand() * 4);
+    var clusters = [];
+    for (var c = 0; c < clusterCount; c++){
+      var ca2 = rand() * Math.PI * 2;
+      var cd = rand() * maxR * 0.7;
+      clusters.push({
+        x: cx + Math.cos(ca2) * cd,
+        y: cy + Math.sin(ca2) * cd,
+        r: maxR * (0.15 + rand() * 0.25)
+      });
+    }
+    for (var k = 0; k < starCount; k++){
+      var cl = clusters[Math.floor(rand() * clusters.length)];
+      var kr = Math.sqrt(rand()) * cl.r;
+      var ka = rand() * Math.PI * 2;
+      scene.stars.push(makeStar(cl.x + Math.cos(ka) * kr, cl.y + Math.sin(ka) * kr, baseColor, colorVar, rand));
+    }
+  } else if (type === 3){
+    var ringRadius = maxR * 0.68;
+    var ringWidth = maxR * 0.22;
+    for (var ri = 0; ri < starCount; ri++){
+      var ra = rand() * Math.PI * 2;
+      var rr = ringRadius + gaussian(rand) * ringWidth;
+      scene.stars.push(makeStar(cx + Math.cos(ra) * rr, cy + Math.sin(ra) * rr, baseColor, colorVar, rand));
+    }
+    for (var cr2 = 0; cr2 < starCount * 0.1; cr2++){
+      var crr = Math.sqrt(rand()) * maxR * 0.15;
+      var cra = rand() * Math.PI * 2;
+      scene.stars.push(makeStar(cx + Math.cos(cra) * crr, cy + Math.sin(cra) * crr, baseColor, colorVar, rand));
+    }
+  } else {
+    for (var l = 0; l < starCount; l++){
+      var lr = Math.pow(rand(), 0.8) * maxR;
+      var la = rand() * Math.PI * 2;
+      var lx = cx + Math.cos(la) * lr;
+      var ly = cy + Math.sin(la) * lr * 0.35;
+      scene.stars.push(makeStar(lx, ly, baseColor, colorVar, rand));
+    }
+  }
+
+  var nebCount = [0, 3, 8, 15][p.nebulaCount];
+  var nebHue = [200, 260, 320, 20, 60, 150, 180, 280][p.nebulaHue];
+  var nebOpacity = [0.12, 0.25, 0.45][p.nebulaOpacity];
+
+  for (var n = 0; n < nebCount; n++){
+    var na = rand() * Math.PI * 2;
+    var nd = rand() * maxR * 0.85;
+    var hue2 = (nebHue + (rand() - 0.5) * 60 + 360) % 360;
+    scene.nebulae.push({
+      x: cx + Math.cos(na) * nd,
+      y: cy + Math.sin(na) * nd,
+      r: maxR * (0.12 + rand() * 0.28),
+      hue: hue2,
+      opacity: nebOpacity * (0.6 + rand() * 0.4),
+      phase: rand() * Math.PI * 2,
+      speed: 0.3 + rand() * 0.5
+    });
+  }
+
+  var compCount = [0, 1, 2][p.companionCount];
+  for (var cc = 0; cc < compCount; cc++){
+    var cca = rand() * Math.PI * 2;
+    var ccd = maxR * (1.15 + rand() * 0.6);
+    var compR = maxR * (0.08 + rand() * 0.12);
+    var compStars = [];
+    var compStarCount = 150 + Math.floor(rand() * 150);
+    for (var cs = 0; cs < compStarCount; cs++){
+      var csr = Math.pow(rand(), 0.7) * compR;
+      var csa = rand() * Math.PI * 2;
+      compStars.push({
+        angle: csa, r: csr,
+        size: 0.4 + rand() * 0.9,
+        alpha: 0.5 + rand() * 0.5,
+        color: 'rgb(' + baseColor.join(',') + ')'
+      });
+    }
+    scene.companions.push({
+      x: cx + Math.cos(cca) * ccd,
+      y: cy + Math.sin(cca) * ccd,
+      r: compR,
+      stars: compStars
+    });
+  }
+
+  var bgCount = BG_STAR_COUNTS[p.bgStars];
+  for (var b = 0; b < bgCount; b++){
+    scene.bgStars.push({
+      x: rand() * W,
+      y: rand() * H,
+      size: 0.4 + rand() * 0.8,
+      alpha: 0.2 + rand() * 0.6,
+      twinkle: rand() * Math.PI * 2,
+      speed: 0.5 + rand() * 2
+    });
+  }
+
+  return scene;
+}
+
+function makeStar(x, y, baseColor, colorVar, rand){
+  var drift = (rand() - 0.5) * 2 * colorVar * 50;
+  var r = Math.max(0, Math.min(255, baseColor[0] + drift));
+  var g = Math.max(0, Math.min(255, baseColor[1] + drift * 0.9));
+  var b = Math.max(0, Math.min(255, baseColor[2] + drift * 0.8));
+  return {
+    x: x, y: y,
+    size: 0.35 + rand() * 1.5,
+    color: 'rgb(' + (r|0) + ',' + (g|0) + ',' + (b|0) + ')',
+    brightness: 0.35 + rand() * 0.65,
+    twinkle: rand() * Math.PI * 2,
+    twinkleSpeed: 0.4 + rand() * 1.8
+  };
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render(t){
+  ctx.fillStyle = '#05060e';
+  ctx.fillRect(0, 0, W, H);
+
+  for (var i = 0; i < scene.bgStars.length; i++){
+    var b = scene.bgStars[i];
+    var tw = 0.7 + Math.sin(t * b.speed + b.twinkle) * 0.3;
+    ctx.fillStyle = 'rgba(255,255,255,' + (b.alpha * tw) + ')';
+    ctx.fillRect(b.x, b.y, b.size, b.size);
+  }
+
+  var rot = t * ROTATION_SPEEDS[params.rotationSpeed] * (params.rotationDirection === 0 ? 1 : -1);
+  var cos = Math.cos(rot);
+  var sin = Math.sin(rot);
+  var tilt = scene.tilt;
+  var cx = scene.cx, cy = scene.cy;
+
+  // Nebulae
+  ctx.globalCompositeOperation = 'screen';
+  for (var n = 0; n < scene.nebulae.length; n++){
+    var nb = scene.nebulae[n];
+    var dx = nb.x - cx, dy = nb.y - cy;
+    var nx = cx + dx * cos - dy * sin;
+    var ny = cy + (dx * sin + dy * cos) * tilt;
+    var pulse = 0.85 + Math.sin(t * nb.speed + nb.phase) * 0.15;
+
+    var grd = ctx.createRadialGradient(nx, ny, 0, nx, ny, nb.r);
+    grd.addColorStop(0, 'hsla(' + nb.hue + ',75%,65%,' + (nb.opacity * pulse) + ')');
+    grd.addColorStop(0.4, 'hsla(' + nb.hue + ',70%,45%,' + (nb.opacity * pulse * 0.6) + ')');
+    grd.addColorStop(0.75, 'hsla(' + nb.hue + ',65%,30%,' + (nb.opacity * pulse * 0.25) + ')');
+    grd.addColorStop(1, 'hsla(' + nb.hue + ',60%,20%,0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(nx, ny, nb.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+
+  // Stars
+  for (var s = 0; s < scene.stars.length; s++){
+    var st = scene.stars[s];
+    var sdx = st.x - cx, sdy = st.y - cy;
+    var px = cx + sdx * cos - sdy * sin;
+    var py = cy + (sdx * sin + sdy * cos) * tilt;
+
+    var twk = 0.65 + Math.sin(t * st.twinkleSpeed + st.twinkle) * 0.35;
+    var alpha = st.brightness * twk;
+
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = st.color;
+
+    if (st.size < 1.1){
+      ctx.fillRect(px - st.size / 2, py - st.size / 2, st.size, st.size);
+    } else {
+      ctx.beginPath();
+      ctx.arc(px, py, st.size, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (st.size > 2.2){
+        ctx.globalAlpha = alpha * 0.55;
+        ctx.fillRect(px - 0.4, py - st.size * 2.8, 0.8, st.size * 5.6);
+        ctx.fillRect(px - st.size * 2.8, py - 0.4, st.size * 5.6, 0.8);
+      }
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  // Core
+  var coreSizeMul = [0.05, 0.10, 0.15, 0.20, 0.28][params.coreSize];
+  var coreR = coreSizeMul * scene.maxR;
+  var coreBright = [0.3, 0.6, 0.85, 1.0][params.coreBrightness];
+  var coreCol = CORE_COLORS[params.coreColor];
+  var corePulse = 0.9 + Math.sin(t * 0.6) * 0.1;
+
+  var coreGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 2.8);
+  coreGrd.addColorStop(0, 'rgba(255,255,255,' + (coreBright * corePulse) + ')');
+  coreGrd.addColorStop(0.15, 'rgba(255,255,255,' + (coreBright * 0.85 * corePulse) + ')');
+  coreGrd.addColorStop(0.4, 'rgba(' + coreCol.join(',') + ',' + (coreBright * 0.5) + ')');
+  coreGrd.addColorStop(1, 'rgba(' + coreCol.join(',') + ',0)');
+  ctx.fillStyle = coreGrd;
+  ctx.beginPath();
+  ctx.arc(cx, cy, coreR * 2.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Companions
+  for (var cc = 0; cc < scene.companions.length; cc++){
+    var comp = scene.companions[cc];
+    for (var c2 = 0; c2 < comp.stars.length; c2++){
+      var cstar = comp.stars[c2];
+      var cpx = comp.x + Math.cos(cstar.angle) * cstar.r;
+      var cpy = comp.y + Math.sin(cstar.angle) * cstar.r;
+      ctx.fillStyle = cstar.color;
+      ctx.globalAlpha = cstar.alpha;
+      ctx.beginPath();
+      ctx.arc(cpx, cpy, cstar.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    var compGrd = ctx.createRadialGradient(comp.x, comp.y, 0, comp.x, comp.y, comp.r * 1.5);
+    compGrd.addColorStop(0, 'rgba(255,255,255,0.6)');
+    compGrd.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = compGrd;
+    ctx.beginPath();
+    ctx.arc(comp.x, comp.y, comp.r * 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Dust Lanes
+  if (params.dustLanes > 0){
+    var dustAlpha = [0, 0.18, 0.35][params.dustLanes];
+    var dustCount = params.dustLanes * 3;
+
+    for (var d = 0; d < dustCount; d++){
+      var da = (d / dustCount) * Math.PI * 2 + rot;
+      var dr = scene.maxR * 0.35;
+      var dx2 = cx + Math.cos(da) * dr;
+      var dy2 = cy + Math.sin(da) * dr * tilt;
+
+      var dGrd = ctx.createRadialGradient(dx2, dy2, 0, dx2, dy2, scene.maxR * 0.35);
+      dGrd.addColorStop(0, 'rgba(10,5,20,' + dustAlpha + ')');
+      dGrd.addColorStop(1, 'rgba(10,5,20,0)');
+      ctx.fillStyle = dGrd;
+      ctx.beginPath();
+      ctx.arc(dx2, dy2, scene.maxR * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Vignette
+  var vig = ctx.createRadialGradient(cx, cy, H * 0.5, cx, cy, H * 1.1);
+  vig.addColorStop(0, 'rgba(0,0,0,0)');
+  vig.addColorStop(1, 'rgba(0,0,0,0.55)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, W, H);
+
+  // Radar Sweep
+  var sweepAngle = (t * 0.5) % (Math.PI * 2);
+  var sweepGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, W * 0.8);
+  sweepGrd.addColorStop(0, 'rgba(125,255,125,0.08)');
+  sweepGrd.addColorStop(0.5, 'rgba(125,255,125,0.03)');
+  sweepGrd.addColorStop(1, 'rgba(125,255,125,0)');
+  ctx.fillStyle = sweepGrd;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.arc(cx, cy, W * 0.8, sweepAngle, sweepAngle + 0.3);
+  ctx.closePath();
+  ctx.fill();
+  
+  // Radar Line
+  ctx.strokeStyle = 'rgba(125,255,125,0.2)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + Math.cos(sweepAngle) * W, cy + Math.sin(sweepAngle) * W);
+  ctx.stroke();
+}
+
+/* ============================================================
+   ANIMATION LOOP
+   ============================================================ */
+function frame(now){
+  requestAnimationFrame(frame);
+  if (paused) return;
+  if (document.hidden) return;
+
+  var t = (now - startTime) / 1000;
+  lastFrame = now;
+  render(t);
+
+  // Update HUD coord
+  var hud = document.getElementById('hud-coord');
+  if (hud) {
+    var cx = Math.sin(t * 0.5) * 50;
+    var cy = Math.cos(t * 0.5) * 50;
+    hud.textContent = 'COORD: ' + cx.toFixed(2) + ', ' + cy.toFixed(2);
+  }
+}
+
+/* ============================================================
+   LOAD ADDRESS
+   ============================================================ */
+var $ = function(id){ return document.getElementById(id); };
+
+function renderLoc(loc){
+  currentLoc = loc;
+  params = decode(loc);
+  var rand = mulberry32(params.seed);
+  scene = generateScene(params, rand);
+  startTime = performance.now();
+  lastFrame = startTime;
+
+  $('addr').value = toB62(loc);
+  try { history.replaceState(null, '', '#a=' + toB62(loc)); } catch(e){}
+
+  var typeName = TYPE_NAMES[params.galaxyType];
+  if (params.galaxyType === 0) typeName += ' · ' + (params.arms + 2) + ' ARMS';
+  $('t-type').textContent = typeName;
+  $('t-stars').textContent = STAR_COUNTS[params.starCount].toLocaleString();
+  $('t-mood').textContent = MOOD_NAMES[params.starColorTemp];
+  $('t-neb').textContent = ['NONE','FEW','SEVERAL','MANY'][params.nebulaCount];
+
+  render(0);
+}
+
+function randomLoc(){
+  var buf = new Uint8Array(16);
+  try { crypto.getRandomValues(buf); } catch(e){ for (var i=0;i<16;i++) buf[i] = Math.floor(Math.random()*256); }
+  var x = 0n;
+  for (var j = 0; j < 16; j++) x = (x << 8n) | BigInt(buf[j]);
+  return x % TOTAL;
+}
+
+/* ============================================================
+   EXPORT PNG
+   ============================================================ */
+function downloadPNG(){
+  var addr = toB62(currentLoc).slice(0, 12);
+  canvas.toBlob(function(blob){
+    if (!blob) return;
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'scan-' + addr + '.png';
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 3000);
+  }, 'image/png');
+}
+
+/* ============================================================
+   UI EVENTS
+   ============================================================ */
+$('go').addEventListener('click', function(){
+  var n = fromB62($('addr').value.trim());
+  if (n !== null) renderLoc(n % TOTAL);
+});
+$('addr').addEventListener('keydown', function(e){
+  if (e.key === 'Enter'){ e.preventDefault(); $('go').click(); }
+});
+$('prev').addEventListener('click', function(){ renderLoc((currentLoc - 1n + TOTAL) % TOTAL); });
+$('next').addEventListener('click', function(){ renderLoc((currentLoc + 1n) % TOTAL); });
+$('rand').addEventListener('click', function(){ renderLoc(randomLoc()); });
+$('copy').addEventListener('click', function(){
+  var b = this;
+  navigator.clipboard.writeText(toB62(currentLoc)).then(function(){
+    var t = b.textContent;
+    b.textContent = 'COPIED ✓';
+    setTimeout(function(){ b.textContent = t; }, 1200);
+  });
+});
+$('png').addEventListener('click', downloadPNG);
+$('reset').addEventListener('click', function(){
+  var rand = mulberry32(params.seed + 1);
+  scene = generateScene(params, rand);
+  startTime = performance.now();
+});
+$('pause-btn').addEventListener('click', function(){
+  paused = !paused;
+  this.textContent = paused ? '▶' : '⏸';
+  if (!paused) startTime += performance.now() - lastFrame;
+});
+
+document.addEventListener('keydown', function(e){
+  var tag = e.target && e.target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  if (e.key === ' ' || e.code === 'Space'){ e.preventDefault(); $('pause-btn').click(); }
+  else if (e.key === 'r' || e.key === 'R'){ e.preventDefault(); $('rand').click(); }
+  else if (e.key === 'c' || e.key === 'C'){ e.preventDefault(); $('copy').click(); }
+  else if (e.key === 'ArrowLeft'){ e.preventDefault(); $('prev').click(); }
+  else if (e.key === 'ArrowRight'){ e.preventDefault(); $('next').click(); }
+});
+
+document.addEventListener('visibilitychange', function(){
+  if (!document.hidden) lastFrame = performance.now();
+});
+
+/* ============================================================
+   INIT
+   ============================================================ */
+var initLoc = randomLoc();
+var h = (location.hash || '').replace('#', '');
+var ha = new URLSearchParams(h).get('a');
+if (ha){
+  var n = fromB62(ha);
+  if (n !== null) initLoc = n % TOTAL;
+}
+renderLoc(initLoc);
+requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>
