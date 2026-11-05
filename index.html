@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Babel Gallery // System Access</title>
+<meta name="description" content="An infinite gallery of every possible tune, picture, program, ecosystem, aquarium, and galaxy.">
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<!-- فونت مونواسپیس برای حس ترمینال -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #050806;
+  --surface: #0a120d;
+  --fg: #7dff7d;
+  --fg-bright: #d4ffd4;
+  --muted: #2c5c2c;
+  --accent: #ff4444;
+  --border: #1a3a1a;
+  --border-bright: #4aff4a;
+  --font: 'Share Tech Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: var(--bg); }
+body {
+  font-family: var(--font);
+  color: var(--fg);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow-x: hidden;
+  text-transform: uppercase;
+  position: relative;
+}
+
+/* CRT Scanline & Flicker Effect */
+body::before {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  z-index: 50;
+  background-size: 100% 2px, 3px 100%;
+  pointer-events: none;
+  animation: flicker 0.15s infinite;
+}
+@keyframes flicker {
+  0% { opacity: 0.95; }
+  50% { opacity: 1; }
+  100% { opacity: 0.95; }
+}
+
+/* Selection */
+::selection { background: var(--fg); color: var(--bg); }
+
+/* Layout */
+main {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+  position: relative;
+  z-index: 10;
+}
+
+/* HUD elements */
+.hud-line { height: 1px; background: var(--border); margin: 10px 0; position: relative; }
+.hud-line::after { content: ''; position: absolute; left: 0; top: 0; height: 1px; width: 30%; background: var(--border-bright); }
+
+header { margin-bottom: 30px; border: 1px solid var(--border); padding: 20px; position: relative; background: var(--surface); }
+header::before { content: '/// SYSTEM ACCESS'; position: absolute; top: -10px; left: 20px; background: var(--bg); padding: 0 10px; font-size: 11px; color: var(--muted); }
+header h1 { font-size: 24px; color: var(--fg-bright); letter-spacing: 2px; margin-bottom: 8px; }
+header p { font-size: 12px; color: var(--muted); max-width: 600px; }
+
+/* Piece of the Day Panel */
+.artifact {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 20px;
+  margin-bottom: 30px;
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 250px;
+  gap: 20px;
+}
+.artifact::before { content: 'DATA RECOVERY BLOCK'; position: absolute; top: -10px; left: 20px; background: var(--bg); padding: 0 10px; font-size: 11px; color: var(--fg); }
+.artifact-left h2 { font-size: 16px; color: var(--fg-bright); margin-bottom: 15px; }
+.artifact-left p { font-size: 12px; margin-bottom: 8px; color: var(--muted); }
+.artifact-left .addr { font-size: 15px; color: var(--fg-bright); word-break: break-all; border: 1px dashed var(--border); padding: 8px; margin-bottom: 15px; background: #000; text-shadow: 0 0 5px var(--fg); }
+.artifact-right { border-left: 1px solid var(--border); padding-left: 20px; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+
+/* Terminal Buttons */
+.btn {
+  display: inline-block;
+  padding: 10px 15px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  text-decoration: none;
+  font-family: var(--font);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.1s;
+  text-align: center;
+  position: relative;
+  text-transform: uppercase;
+}
+.btn:hover { background: var(--fg); color: var(--bg); border-color: var(--fg-bright); box-shadow: 0 0 10px var(--fg); }
+.btn::before { content: '> '; font-weight: bold; }
+
+/* Grid Navigation */
+.grid-nav { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+.nav-item {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 20px;
+  text-decoration: none;
+  color: var(--fg);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: all 0.2s;
+}
+.nav-item:hover {
+  border-color: var(--fg);
+  box-shadow: inset 0 0 15px rgba(125, 255, 125, 0.1);
+}
+.nav-item::before, .nav-item::after {
+  content: ''; position: absolute; width: 10px; height: 10px; border: 2px solid var(--fg); transition: all 0.2s;
+}
+.nav-item::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+.nav-item::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+.nav-item:hover::before { top: -3px; left: -3px; width: 15px; height: 15px; }
+.nav-item:hover::after { bottom: -3px; right: -3px; width: 15px; height: 15px; }
+
+.nav-item h3 { font-size: 16px; margin-bottom: 10px; color: var(--fg-bright); display: flex; align-items: center; gap: 8px; }
+.nav-item p { font-size: 11px; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+.nav-item .meta { font-size: 10px; color: var(--fg); margin-top: auto; border-top: 1px solid var(--border); padding-top: 10px; display: flex; justify-content: space-between; }
+
+/* Glitch Effect on Title */
+.glitch { position: relative; display: inline-block; }
+.glitch::before, .glitch::after { content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); overflow: hidden; }
+.glitch::before { left: 2px; text-shadow: -1px 0 red; animation: glitch-anim 2s infinite linear alternate-reverse; }
+.glitch::after { left: -2px; text-shadow: -1px 0 blue; animation: glitch-anim2 3s infinite linear alternate-reverse; }
+@keyframes glitch-anim { 0% { clip: rect(10px, 9999px, 50px, 0); } 20% { clip: rect(30px, 9999px, 80px, 0); } 40% { clip: rect(50px, 9999px, 20px, 0); } 60% { clip: rect(80px, 9999px, 60px, 0); } 80% { clip: rect(20px, 9999px, 90px, 0); } 100% { clip: rect(60px, 9999px, 10px, 0); } }
+@keyframes glitch-anim2 { 0% { clip: rect(70px, 9999px, 30px, 0); } 20% { clip: rect(40px, 9999px, 70px, 0); } 40% { clip: rect(10px, 9999px, 40px, 0); } 60% { clip: rect(90px, 9999px, 80px, 0); } 80% { clip: rect(30px, 9999px, 50px, 0); } 100% { clip: rect(50px, 9999px, 20px, 0); } }
+
+footer { margin-top: 40px; border-top: 1px solid var(--border); padding-top: 20px; font-size: 10px; color: var(--muted); display: flex; justify-content: space-between; }
+
+/* Mobile */
+@media (max-width: 768px) {
+  .artifact { grid-template-columns: 1fr; }
+  .artifact-right { border-left: none; border-top: 1px solid var(--border); padding-left: 0; padding-top: 20px; }
+  header h1 { font-size: 18px; }
+  .glitch::before, .glitch::after { display: none; }
+}
+</style>
+</head>
+<body>
+<main>
+
+  <header>
+    <h1 class="glitch" data-text="BABEL GALLERY // PROJECT TERMINAL">BABEL GALLERY // PROJECT TERMINAL</h1>
+    <p>[ SYSTEM STATUS: ONLINE ] [ DATABASE INTEGRITY: 100% ] [ SIGNAL: STRONG ]<br><br>An infinite archive of every possible tune, picture, program, and world. Accessible via unique base-62 address fragments. Choose a sector to begin decryption.</p>
+    <div class="hud-line"></div>
+  </header>
+
+  <!-- Piece of the Day -->
+  <div class="artifact">
+    <div class="artifact-left">
+      <h2>FRAGMENT OF THE DAY // RECOVERED DATA</h2>
+      <p>DAILY ROTATION PROTOCOL ACTIVE. SAME FRAGMENT FOR ALL VISITORS TODAY.</p>
+      <p>EXTRACTED DATE: <span id="pod-date" style="color:var(--fg-bright)">—</span></p>
+      <div class="addr" id="pod-addr">DECRYPTING...</div>
+    </div>
+    <div class="artifact-right">
+      <a class="btn" id="pod-listen" href="music.html">DECRYPT AUDIO</a>
+      <a class="btn" id="pod-image" href="image.html">VIEW VISUAL</a>
+      <a class="btn" id="pod-multi" href="pair.html">MULTI-SCAN</a>
+    </div>
+  </div>
+
+  <div class="grid-nav">
+    <a href="music.html" class="nav-item">
+      <h3>AUDIO ARRAY</h3>
+      <p>Sound design, tempo, drums, and melody encoded in a single number.</p>
+      <div class="meta"><span>~10^84 PIECES</span><span>[ ONLINE ]</span></div>
+    </a>
+    <a href="image.html" class="nav-item">
+      <h3>VISUAL MATRIX</h3>
+      <p>Pixel images on a grid. Paint one to discover its address.</p>
+      <div class="meta"><span>16x9 TO 80x45</span><span>[ ONLINE ]</span></div>
+    </a>
+    <a href="code.html" class="nav-item">
+      <h3>SCRIPTORIUM</h3>
+      <p>Every possible program in 8 languages. Explore or run it live.</p>
+      <div class="meta"><span>8 LANG x 16 CONCEPTS</span><span>[ ONLINE ]</span></div>
+    </a>
+    <a href="ecosystem.html" class="nav-item">
+      <h3>BIO-SIMULATION</h3>
+      <p>Keyframe background morphing between two states, with cellular automata.</p>
+      <div class="meta"><span>201 BITS</span><span>[ ONLINE ]</span></div>
+    </a>
+    <a href="aquarium.html" class="nav-item">
+      <h3>OCEANIC PROBE</h3>
+      <p>Fish, plants, bubbles, and light from a single address.</p>
+      <div class="meta"><span>23 PARAMS</span><span>[ ONLINE ]</span></div>
+    </a>
+    <a href="galaxy.html" class="nav-item">
+      <h3>DEEP SPACE SCAN</h3>
+      <p>Spiral arms, elliptical glows, nebulae, and companions.</p>
+      <div class="meta"><span>19 PARAMS</span><span>[ ONLINE ]</span></div>
+    </a>
+    <a href="pair.html" class="nav-item">
+      <h3>MULTI-VIEW</h3>
+      <p>Pick any combination of galleries and view them side by side.</p>
+      <div class="meta"><span>2-6 PANELS</span><span>[ ONLINE ]</span></div>
+    </a>
+    <a href="finds.html" class="nav-item">
+      <h3>RECOVERED FINDS</h3>
+      <p>Share the pieces you discover, and browse what others have found.</p>
+      <div class="meta"><span>GITHUB SYNC</span><span>[ ONLINE ]</span></div>
+    </a>
+    <a href="stats.html" class="nav-item">
+      <h3>SYSTEM LOGS</h3>
+      <p>Explore the math behind the library. How many pieces exist?</p>
+      <div class="meta"><span>ALL SECTORS</span><span>[ ONLINE ]</span></div>
+    </a>
+  </div>
+
+  <footer>
+    <span>SYS.VER: 2.0.26 // PROTOCOL: BORGES</span>
+    <span>© 2026 MEHRZAD // ALL DATA GENERATED LOCALLY</span>
+  </footer>
+
+</main>
+
+<script>
+(function(){
+  // همان منطق قبلی برای تولید Piece of the Day
+  function dateToAddress(date){
+    var y = date.getUTCFullYear();
+    var m = String(date.getUTCMonth()+1).padStart(2,'0');
+    var d = String(date.getUTCDate()).padStart(2,'0');
+    var seed = '' + y + m + d;
+    var MOD = 10n ** 84n;
+    var h = 14695981039346656037n;
+    for (var i=0; i<seed.length; i++){
+      h = (h * 1099511628211n + BigInt(seed.charCodeAt(i))) % MOD;
+    }
+    h = (h * 6364136223846793005n + 1442695040888963407n) % MOD;
+    h = (h * 6364136223846793005n + 1442695040888963407n) % MOD;
+
+    var chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+    if (h === 0n) return '0';
+    var s = '';
+    var n = h;
+    while (n > 0n){
+      s = chars[Number(n % 62n)] + s;
+      n = n / 62n;
+    }
+    return s;
+  }
+
+  var today = new Date();
+  var addr = dateToAddress(today);
+  var label = today.toISOString().slice(0,10);
+
+  document.getElementById('pod-addr').textContent = addr;
+  document.getElementById('pod-date').textContent = label + ' UTC';
+  document.getElementById('pod-listen').href = 'music.html#a=' + addr;
+  document.getElementById('pod-image').href = 'image.html#a=' + addr;
+  document.getElementById('pod-multi').href = 'pair.html#a=' + addr;
+})();
+</script>
+</body>
+</html>
