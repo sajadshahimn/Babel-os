@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>System Diagnostics // Babel OS</title>
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #050806;
+  --surface: #0a120d;
+  --fg: #7dff7d;
+  --fg-bright: #d4ffd4;
+  --muted: #2c5c2c;
+  --accent: #ff4444;
+  --border: #1a3a1a;
+  --border-bright: #4aff4a;
+  --font: 'Share Tech Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: var(--bg); }
+body {
+  font-family: var(--font);
+  color: var(--fg);
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow-x: hidden;
+  text-transform: uppercase;
+  position: relative;
+}
+
+/* CRT Scanline Effect */
+body::before {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  z-index: 50;
+  background-size: 100% 2px, 3px 100%;
+  pointer-events: none;
+}
+::selection { background: var(--fg); color: var(--bg); }
+
+main { max-width: 1000px; margin: 0 auto; padding: 20px; position: relative; z-index: 10; }
+
+header { margin-bottom: 30px; border-bottom: 1px dashed var(--border); padding-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 10px;}
+header h1 { font-size: 20px; color: var(--fg-bright); letter-spacing: 1px; }
+header p { font-size: 11px; color: var(--muted); }
+a { color: var(--fg); text-decoration: none; border-bottom: 1px dotted var(--fg); }
+a:hover { background: var(--fg); color: var(--bg); }
+
+/* Grid Layout */
+.diag-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
+.panel { border: 1px solid var(--border); background: var(--surface); padding: 15px; position: relative; }
+.panel::before { content: attr(data-title); position: absolute; top: -9px; left: 10px; background: var(--bg); padding: 0 5px; font-size: 10px; color: var(--fg-bright); letter-spacing: 1px; }
+
+/* Terminal Tables */
+table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--border); }
+th { color: var(--muted); font-weight: normal; }
+td.val { text-align: right; color: var(--fg-bright); }
+
+/* ASCII Bar */
+.bar { letter-spacing: -1px; color: var(--fg); font-weight: bold; }
+.bar .empty { color: var(--muted); }
+
+/* Highlight Stats */
+.stat-big { font-size: 24px; color: var(--fg-bright); text-shadow: 0 0 10px rgba(125,255,125,0.3); margin: 10px 0; word-break: break-all; }
+.stat-label { font-size: 10px; color: var(--muted); }
+
+/* Slider Terminal Style */
+input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; margin: 10px 0; }
+input[type=range]:focus { outline: none; }
+input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: var(--border); border: 1px solid var(--fg); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 14px; width: 8px; background: var(--fg-bright); cursor: pointer; margin-top: -6px; box-shadow: 0 0 5px var(--fg); }
+
+button { background: transparent; border: 1px solid var(--border); color: var(--fg); font-family: var(--font); padding: 4px 8px; cursor: pointer; text-transform: uppercase; font-size: 11px; transition: all 0.1s; }
+button:hover, button.active { background: var(--fg); color: var(--bg); border-color: var(--fg-bright); }
+
+footer { margin-top: 40px; border-top: 1px dashed var(--border); padding-top: 10px; font-size: 10px; color: var(--muted); text-align: center; }
+
+/* Glitch */
+.glitch { position: relative; display: inline-block; }
+.glitch::before, .glitch::after { content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--surface); overflow: hidden; }
+.glitch::before { left: 1px; text-shadow: -1px 0 red; animation: glitch-anim 2s infinite linear alternate-reverse; }
+.glitch::after { left: -1px; text-shadow: -1px 0 blue; animation: glitch-anim2 3s infinite linear alternate-reverse; }
+@keyframes glitch-anim { 0% { clip: rect(10px, 9999px, 50px, 0); } 20% { clip: rect(30px, 9999px, 80px, 0); } 40% { clip: rect(50px, 9999px, 20px, 0); } 60% { clip: rect(80px, 9999px, 60px, 0); } 80% { clip: rect(20px, 9999px, 90px, 0); } 100% { clip: rect(60px, 9999px, 10px, 0); } }
+@keyframes glitch-anim2 { 0% { clip: rect(70px, 9999px, 30px, 0); } 20% { clip: rect(40px, 9999px, 70px, 0); } 40% { clip: rect(10px, 9999px, 40px, 0); } 60% { clip: rect(90px, 9999px, 80px, 0); } 80% { clip: rect(30px, 9999px, 50px, 0); } 100% { clip: rect(50px, 9999px, 20px, 0); } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1 class="glitch" data-text="BABEL-OS // SYSTEM DIAGNOSTICS">BABEL-OS // SYSTEM DIAGNOSTICS</h1>
+      <p>[ TELEMETRY UPLINK ACTIVE ] [ ANALYZING SECTOR CAPACITIES ]</p>
+    </div>
+    <a href="index.html">&lt; RETURN TO TERMINAL</a>
+  </header>
+
+  <!-- Global Overview -->
+  <div class="panel" data-title="TOTAL SYSTEM CAPACITY" style="margin-bottom: 20px;">
+    <div class="diag-grid" id="global-stats">
+      <!-- JS injects here -->
+    </div>
+  </div>
+
+  <div class="diag-grid">
+    <!-- Music -->
+    <div class="panel" data-title="SECTOR: AUDIO ARRAY">
+      <div class="stat-big" id="st-music">—</div>
+      <div class="stat-label">TOTAL UNIQUE FRAGMENTS</div>
+      <table style="margin-top:15px;">
+        <tr><th>PARAMETER</th><th style="text-align:right">BASE</th><th style="text-align:right">BITS</th></tr>
+        <tbody id="music-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Image -->
+    <div class="panel" data-title="SECTOR: VISUAL MATRIX">
+      <div class="stat-big" id="st-image">—</div>
+      <div class="stat-label">TOTAL UNIQUE FRAGMENTS</div>
+      <div style="margin-top:15px; display:flex; gap:5px;">
+        <button class="mode-btn" data-v="2">MONO</button>
+        <button class="mode-btn" data-v="4">GRAY</button>
+        <button class="mode-btn active" data-v="16">COLOR</button>
+      </div>
+      <input type="range" id="palette-slider" min="2" max="16" value="16" step="1">
+      <table style="margin-top:5px;">
+        <tr><th>GRID</th><th style="text-align:right">POSSIBILITIES</th></tr>
+        <tbody id="image-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Code -->
+    <div class="panel" data-title="SECTOR: SCRIPTORIUM">
+      <div class="stat-big" id="st-code">—</div>
+      <div class="stat-label">TOTAL UNIQUE FRAGMENTS</div>
+      <table style="margin-top:15px;">
+        <tr><th>COMPONENT</th><th style="text-align:right">COUNT</th></tr>
+        <tr><td>LANGUAGES</td><td class="val">8</td></tr>
+        <tr><td>CONCEPTS</td><td class="val">16</td></tr>
+        <tr><td>STYLES</td><td class="val">4</td></tr>
+        <tr><td>VARIABLE NAMES</td><td class="val">32</td></tr>
+        <tr><td>NUMERIC VALUES</td><td class="val">10^8</td></tr>
+        <tr><td>MESSAGES</td><td class="val">16</td></tr>
+      </table>
+    </div>
+
+    <!-- Ecosystem -->
+    <div class="panel" data-title="SECTOR: BIO-SIMULATION">
+      <div class="stat-big" id="st-eco">—</div>
+      <div class="stat-label">TOTAL UNIQUE FRAGMENTS</div>
+      <table style="margin-top:15px;">
+        <tr><th>LAYER</th><th style="text-align:right">PARAMS</th><th style="text-align:right">BITS</th></tr>
+        <tbody id="eco-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Aquarium -->
+    <div class="panel" data-title="SECTOR: OCEANIC PROBE">
+      <div class="stat-big" id="st-aqua">—</div>
+      <div class="stat-label">TOTAL UNIQUE FRAGMENTS</div>
+      <table style="margin-top:15px;">
+        <tr><th>PARAMETER</th><th style="text-align:right">BASE</th><th style="text-align:right">BITS</th></tr>
+        <tbody id="aqua-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Galaxy -->
+    <div class="panel" data-title="SECTOR: DEEP SPACE SCAN">
+      <div class="stat-big" id="st-gal">—</div>
+      <div class="stat-label">TOTAL UNIQUE FRAGMENTS</div>
+      <table style="margin-top:15px;">
+        <tr><th>PARAMETER</th><th style="text-align:right">BASE</th><th style="text-align:right">BITS</th></tr>
+        <tbody id="gal-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- System Logs (Facts) -->
+  <div class="panel" data-title="SYSTEM LOGS // FUN FACTS" style="margin-top: 20px;">
+    <ul id="facts-list" style="list-style: none; font-size: 12px; line-height: 1.8; color: var(--muted);"></ul>
+  </div>
+
+  <footer>
+    SYS.VER: 2.0.26 // DATA GENERATED LOCALLY // [ END OF LOG ]
+  </footer>
+</main>
+
+<script>
+"use strict";
+
+// --- DATA MODELS ---
+var SOUND_PARAMS = [
+  { name: "Tempo", base: 16 }, { name: "Waveform", base: 5 }, { name: "Harmonics", base: 4 },
+  { name: "Attack", base: 6 }, { name: "Sustain", base: 4 }, { name: "Decay", base: 4 },
+  { name: "Release", base: 4 }, { name: "Filter", base: 8 }, { name: "Filter sweep", base: 3 },
+  { name: "Vibrato", base: 4 }, { name: "Chorus", base: 4 }, { name: "Octave", base: 5 },
+  { name: "Reverb", base: 4 }, { name: "Drum kit", base: 4 }
+];
+var IMAGE_GRIDS = [ {w:16,h:9}, {w:24,h:14}, {w:32,h:18}, {w:48,h:27}, {w:64,h:36}, {w:80,h:45} ];
+var ECO_PARAMS = [
+  { layer: "BASE", count: 14, bits: 82 },
+  { layer: "CA", count: 8, bits: 41 },
+  { layer: "EFFECT", count: 10, bits: 51 },
+  { layer: "GLOBAL", count: 5, bits: 27 }
+];
+var AQUA_PARAMS = [
+  { name: "Water color", radix: 8 }, { name: "Water depth", radix: 4 }, { name: "Light rays", radix: 4 },
+  { name: "Fish type", radix: 6 }, { name: "Fish count", radix: 8 }, { name: "Fish size", radix: 5 },
+  { name: "Fish color", radix: 16 }, { name: "Fish pattern", radix: 6 }, { name: "Fish eyes", radix: 3 },
+  { name: "Fish tail", radix: 4 }, { name: "Fish speed", radix: 4 }, { name: "Fish bias", radix: 4 },
+  { name: "Plant count", radix: 6 }, { name: "Plant type", radix: 4 }, { name: "Plant color", radix: 8 },
+  { name: "Plant height", radix: 4 }, { name: "Sand color", radix: 6 }, { name: "Rocks count", radix: 4 },
+  { name: "Bubble density", radix: 5 }, { name: "Bubble size", radix: 3 }, { name: "Sparkles", radix: 3 },
+  { name: "Mood", radix: 4 }, { name: "Seed", radix: 16777216 }
+];
+var GALAXY_PARAMS = [
+  { name: "Galaxy type", radix: 5 }, { name: "Arms", radix: 6 }, { name: "Arm tightness", radix: 5 },
+  { name: "Star count", radix: 5 }, { name: "Star temp", radix: 5 }, { name: "Star var", radix: 4 },
+  { name: "Core size", radix: 5 }, { name: "Core bright", radix: 4 }, { name: "Core color", radix: 6 },
+  { name: "Nebula count", radix: 4 }, { name: "Nebula hue", radix: 8 }, { name: "Nebula opacity", radix: 3 },
+  { name: "Dust lanes", radix: 3 }, { name: "Companions", radix: 3 }, { name: "Rotation speed", radix: 4 },
+  { name: "Rotation dir", radix: 2 }, { name: "BG stars", radix: 3 }, { name: "Tilt", radix: 3 },
+  { name: "Seed", radix: 16777216 }
+];
+
+// --- MATH ---
+function calcTotal(params) {
+  return params.reduce(function(a, p){ return a * BigInt(p.radix || p.base); }, 1n);
+}
+function calcBits(params) {
+  return params.reduce(function(s, p){ return s + Math.ceil(Math.log2(p.radix || p.base)); }, 0);
+}
+function imageTotal(palette) {
+  var t = 0n;
+  for (var i = 0; i < IMAGE_GRIDS.length; i++) {
+    t += BigInt(palette) ** BigInt(IMAGE_GRIDS[i].w * IMAGE_GRIDS[i].h);
+  }
+  return t;
+}
+
+var musicTotal = calcTotal(SOUND_PARAMS) * (8n ** 32n) * (26n ** 32n);
+var codeTotal = BigInt(8) * BigInt(16) * BigInt(4) * BigInt(32) * BigInt(100000000) * BigInt(16);
+var ecoTotal = 2n ** BigInt(201);
+var aquaTotal = calcTotal(AQUA_PARAMS);
+var galTotal = calcTotal(GALAXY_PARAMS);
+
+// --- FORMATTING ---
+function formatSci(bn) {
+  var s = bn.toString();
+  if (s.length <= 15) return s.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  var exp = s.length - 1;
+  var mant = (Number(s.slice(0, 4)) / 1000).toFixed(2);
+  return mant + "E+" + exp;
+}
+function makeBar(pct) {
+  var total = 20;
+  var filled = Math.round((pct / 100) * total);
+  if (filled > total) filled = total;
+  if (filled < 0) filled = 0;
+  return "[" + "|".repeat(filled) + "<span class='empty'>" + ".".repeat(total - filled) + "</span>]";
+}
+
+// --- RENDER FUNCTIONS ---
+function renderGlobal() {
+  var html = '';
+  var stats = [
+    { label: "AUDIO ARRAY", val: musicTotal },
+    { label: "VISUAL MATRIX", val: imageTotal(16) },
+    { label: "SCRIPTORIUM", val: codeTotal },
+    { label: "BIO-SIMULATION", val: ecoTotal },
+    { label: "OCEANIC PROBE", val: aquaTotal },
+    { label: "DEEP SPACE", val: galTotal }
+  ];
+  stats.forEach(function(st) {
+    html += '<div style="border:1px dashed var(--border); padding:10px; text-align:center;">';
+    html += '<div class="stat-label">' + st.label + '</div>';
+    html += '<div style="font-size:16px; color:var(--fg-bright); margin-top:5px;">' + formatSci(st.val) + '</div>';
+    html += '</div>';
+  });
+  document.getElementById('global-stats').innerHTML = html;
+}
+
+function renderMusic() {
+  document.getElementById('st-music').textContent = formatSci(musicTotal);
+  var html = '';
+  SOUND_PARAMS.forEach(function(p) {
+    var bits = Math.ceil(Math.log2(p.base));
+    html += '<tr><td>' + p.name + '</td><td class="val">' + p.base + '</td><td class="val">' + bits + '</td></tr>';
+  });
+  document.getElementById('music-tbody').innerHTML = html;
+}
+
+function renderImage(palette) {
+  var total = imageTotal(palette);
+  document.getElementById('st-image').textContent = formatSci(total);
+  var html = '';
+  IMAGE_GRIDS.forEach(function(g) {
+    var p = g.w * g.h;
+    var count = BigInt(palette) ** BigInt(p);
+    html += '<tr><td>' + g.w + 'x' + g.h + '</td><td class="val">' + formatSci(count) + '</td></tr>';
+  });
+  document.getElementById('image-tbody').innerHTML = html;
+}
+
+function renderCode() {
+  document.getElementById('st-code').textContent = formatSci(codeTotal);
+}
+
+function renderEco() {
+  document.getElementById('st-eco').textContent = formatSci(ecoTotal);
+  var html = '';
+  ECO_PARAMS.forEach(function(p) {
+    html += '<tr><td>' + p.layer + '</td><td class="val">' + p.count + '</td><td class="val">' + p.bits + '</td></tr>';
+  });
+  document.getElementById('eco-tbody').innerHTML = html;
+}
+
+function renderAqua() {
+  document.getElementById('st-aqua').textContent = formatSci(aquaTotal);
+  var html = '';
+  AQUA_PARAMS.slice(0, 10).forEach(function(p) { // Show top 10 for UI
+    var bits = Math.ceil(Math.log2(p.radix));
+    html += '<tr><td>' + p.name + '</td><td class="val">' + p.radix + '</td><td class="val">' + bits + '</td></tr>';
+  });
+  html += '<tr><td>... + ' + (AQUA_PARAMS.length - 10) + ' MORE</td><td class="val">—</td><td class="val">—</td></tr>';
+  document.getElementById('aqua-tbody').innerHTML = html;
+}
+
+function renderGalaxy() {
+  document.getElementById('st-gal').textContent = formatSci(galTotal);
+  var html = '';
+  GALAXY_PARAMS.slice(0, 10).forEach(function(p) {
+    var bits = Math.ceil(Math.log2(p.radix));
+    html += '<tr><td>' + p.name + '</td><td class="val">' + p.radix + '</td><td class="val">' + bits + '</td></tr>';
+  });
+  html += '<tr><td>... + ' + (GALAXY_PARAMS.length - 10) + ' MORE</td><td class="val">—</td><td class="val">—</td></tr>';
+  document.getElementById('gal-tbody').innerHTML = html;
+}
+
+function renderFacts() {
+  var facts = [
+    "IF YOU LISTEN TO ONE TUNE PER SECOND, EXPLORING ALL OF MUSIC WOULD TAKE ~" + formatSci(musicTotal / 31557600n) + " YEARS.",
+    "EVERY AQUARIUM HOLDS ~" + calcBits(AQUA_PARAMS) + " BITS OF ENTROPY. FISH, PLANTS, LIGHT, AND MOOD ARE ALL ENCODED.",
+    "EVERY GALAXY HOLDS ~" + calcBits(GALAXY_PARAMS) + " BITS. SPIRAL ARMS, NEBULAE, AND COMPANIONS ARE FULLY DETERMINISTIC.",
+    "THE LARGEST IMAGE GRID (80x45) WITH 16 COLORS HAS " + formatSci(BigInt(16) ** BigInt(80*45)) + " POSSIBILITIES.",
+    "THE MUSIC LIBRARY IS VASTLY LARGER THAN THE ECOSYSTEM, AQUARIUM, AND GALAXY LIBRARIES COMBINED."
+  ];
+  document.getElementById('facts-list').innerHTML = facts.map(function(f, i) {
+    return '<li style="margin-bottom:8px;"><span style="color:var(--fg-bright)">> LOG ' + String(i+1).padStart(2,'0') + ':</span> ' + f + '</li>';
+  }).join('');
+}
+
+// --- INIT & EVENTS ---
+renderGlobal();
+renderMusic();
+renderImage(16);
+renderCode();
+renderEco();
+renderAqua();
+renderGalaxy();
+renderFacts();
+
+// Slider
+var slider = document.getElementById('palette-slider');
+slider.addEventListener('input', function() {
+  var val = Number(this.value);
+  renderImage(val);
+  document.querySelectorAll('.mode-btn').forEach(function(b) {
+    b.classList.toggle('active', Number(b.dataset.v) === val);
+  });
+});
+
+// Buttons
+document.querySelectorAll('.mode-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var val = Number(this.dataset.v);
+    slider.value = val;
+    renderImage(val);
+    document.querySelectorAll('.mode-btn').forEach(function(b) {
+      b.classList.toggle('active', b === btn);
+    });
+  });
+});
+</script>
+</body>
+  </html>
