@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RECOVERED FINDS // Babel-OS</title>
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#050806;
+  --surface:#0a120d;
+  --track:#0a120d;
+  --fg:#7dff7d;
+  --fg-bright:#d4ffd4;
+  --muted:#2c5c2c;
+  --accent:#7dff7d;
+  --accent2:#4aff4a;
+  --border:#1a3a1a;
+  --border-bright:#4aff4a;
+  --font:'Share Tech Mono', monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px)}
+[hidden]{display:none!important}
+body{
+  margin:0;background:var(--bg);color:var(--fg);
+  font:13px/1.5 var(--font);
+  -webkit-font-smoothing:antialiased;
+  text-transform:uppercase;
+  min-height:100vh;
+  position:relative;
+  overflow-x:hidden;
+}
+
+/* CRT Scanlines */
+body::before{
+  content:" ";display:block;position:fixed;top:0;left:0;bottom:0;right:0;
+  background:
+    linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.35) 50%),
+    linear-gradient(90deg, rgba(255,0,0,0.04), rgba(0,255,0,0.02), rgba(0,0,255,0.04));
+  z-index:50;background-size:100% 2px, 3px 100%;
+  pointer-events:none;
+}
+::selection{background:var(--fg);color:var(--bg)}
+
+a{color:var(--fg);text-decoration:none;border-bottom:1px dotted var(--fg)}
+a:hover{background:var(--fg);color:var(--bg)}
+
+label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
+label b{color:var(--fg-bright);font-weight:700}
+
+/* Panels */
+.neu{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:0;
+  box-shadow:none;
+  position:relative;
+}
+.neu::before,.neu::after{content:'';position:absolute;width:8px;height:8px;border:1.5px solid var(--fg);pointer-events:none;z-index:2}
+.neu::before{top:-1px;left:-1px;border-right:none;border-bottom:none}
+.neu::after{bottom:-1px;right:-1px;border-left:none;border-top:none}
+
+/* Tabs */
+.tabs,.seg{display:flex;gap:0;padding:0;border-radius:0;background:var(--surface);border:1px solid var(--border);box-shadow:none;margin-bottom:14px}
+.tabs button,.seg button{
+  flex:1;border:0;border-right:1px solid var(--border);
+  background:transparent;padding:10px 8px;border-radius:0;
+  font:inherit;font-weight:700;font-size:11.5px;letter-spacing:.05em;
+  color:var(--muted);cursor:pointer;transition:all .1s;
+  text-transform:uppercase;
+}
+.tabs button:last-child,.seg button:last-child{border-right:0}
+.tabs button:hover,.seg button:hover{color:var(--fg-bright);background:rgba(125,255,125,0.04)}
+.tabs button.on,.seg button.on{background:var(--fg);color:var(--bg);font-weight:700}
+
+/* Buttons */
+.btn{
+  border:1px solid var(--border);border-radius:0;
+  background:transparent;color:var(--fg);box-shadow:none;
+  font:inherit;font-size:11.5px;font-weight:700;
+  letter-spacing:.04em;text-transform:uppercase;
+  cursor:pointer;transition:all .1s;
+  padding:8px 12px;display:inline-flex;align-items:center;gap:4px;
+}
+.btn:hover{background:rgba(125,255,125,0.08);border-color:var(--fg-bright);box-shadow:0 0 8px rgba(125,255,125,0.3)}
+.btn:active{background:var(--fg);color:var(--bg)}
+.btn.primary{background:var(--fg);color:var(--bg);font-weight:700}
+.btn.primary:hover{background:var(--fg-bright);border-color:var(--fg-bright)}
+.btn.small{padding:5px 9px;font-size:10.5px}
+
+/* Form Elements */
+select,input[type=text],textarea{
+  width:100%;padding:10px 14px;
+  border:1px solid var(--border);border-radius:0;
+  background:#000;box-shadow:none;
+  color:var(--fg-bright);font:12px var(--font);
+  text-transform:uppercase;
+}
+select:focus,input[type=text]:focus,textarea:focus{outline:none;border-color:var(--fg)}
+input[type=text],textarea{font-family:var(--font);letter-spacing:.5px}
+textarea{resize:vertical;word-break:break-all;line-height:1.5}
+textarea[aria-invalid="true"]{border-color:#ff4444}
+
+/* Filter Pills */
+#filters{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 12px;scrollbar-width:thin}
+#filters .pill{
+  flex:none;white-space:nowrap;
+  border:1px solid var(--border);background:transparent;
+  color:var(--muted);padding:6px 12px;
+  font:inherit;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  cursor:pointer;transition:all .1s;
+}
+#filters .pill:hover{color:var(--fg-bright);border-color:var(--fg)}
+#filters .pill.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+
+/* Find Cards (Terminal Logs) */
+.find{
+  background:var(--surface);
+  border:1px solid var(--border);
+  padding:14px 16px;
+  margin-bottom:14px;
+  position:relative;
+  font-size:12px;
+}
+.find::before,.find::after{content:'';position:absolute;width:6px;height:6px;border:1px solid var(--fg);pointer-events:none}
+.find::before{top:-1px;left:-1px;border-right:none;border-bottom:none}
+.find::after{bottom:-1px;right:-1px;border-left:none;border-top:none}
+
+.find-header{
+  display:flex;justify-content:space-between;align-items:flex-start;gap:8px;
+  margin-bottom:8px;flex-wrap:wrap;
+  border-bottom:1px dashed var(--border);
+  padding-bottom:8px;
+}
+.find-title{
+  font-size:13px;font-weight:700;color:var(--fg-bright);
+  margin:0;flex:1;min-width:150px;
+}
+.find-title::before{content:'> ';color:var(--muted);font-weight:400}
+
+.find-timestamp{
+  font-size:10px;color:var(--muted);letter-spacing:.05em;
+  white-space:nowrap;
+}
+
+.find-meta{
+  font-size:11px;color:var(--muted);
+  margin-bottom:10px;
+  display:flex;flex-wrap:wrap;gap:8px;
+}
+.find-meta span{display:inline-flex;align-items:center;gap:4px}
+.find-meta .label{color:var(--muted);font-size:9.5px}
+.find-meta .value{color:var(--fg);font-weight:700}
+
+.find-note{
+  color:var(--fg);
+  font-size:12px;
+  line-height:1.6;
+  margin-bottom:12px;
+  padding:8px 10px;
+  background:#000;
+  border-left:2px solid var(--border);
+}
+
+.find-actions{
+  display:flex;gap:6px;flex-wrap:wrap;align-items:center;
+}
+
+/* Play Button (Preview) */
+.play-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:5px 10px;border:1px solid var(--border);
+  background:transparent;color:var(--fg);
+  font:inherit;font-size:10.5px;font-weight:700;letter-spacing:.05em;
+  cursor:pointer;transition:all .1s;
+  margin-right:auto;
+}
+.play-btn:hover{background:rgba(125,255,125,0.1);border-color:var(--fg-bright);box-shadow:0 0 8px rgba(125,255,125,0.3)}
+.play-btn.playing{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+
+/* Status / Empty states */
+.msg{
+  color:var(--muted);
+  text-align:center;
+  padding:28px 8px;
+  font-size:12px;
+  letter-spacing:.05em;
+}
+.msg::before{content:'[ ';opacity:.6}
+.msg::after{content:' ]';opacity:.6}
+
+/* Share Form */
+.free .f{margin-bottom:14px}
+.free .f:last-child{margin-bottom:0}
+.free input[type=text],.free textarea{font-family:inherit;font-size:13px}
+
+/* Output Frame */
+.preview-frame{position:absolute;width:0;height:0;border:0;opacity:0;pointer-events:none;left:-9999px}
+
+/* Main Layout */
+main{max-width:920px;margin:0 auto;padding:16px 14px 48px;position:relative;z-index:10}
+h1{font-size:20px;color:var(--fg-bright);letter-spacing:2px;margin:6px 2px 4px;font-weight:700}
+.sub{margin:0 2px 16px;font-size:11px;color:var(--muted);letter-spacing:.05em}
+
+.topnav{
+  display:flex;gap:14px;font-size:11px;
+  margin:0 2px 8px;flex-wrap:wrap;
+  padding-bottom:10px;border-bottom:1px dashed var(--border);
+}
+.topnav a{text-decoration:none;font-weight:700;color:var(--muted);border-bottom:none}
+.topnav a:hover{color:var(--fg);background:transparent}
+
+.card{padding:14px;margin-bottom:12px}
+
+/* Hintbar */
+.hintbar{font-size:10.5px;color:var(--muted);text-align:center;margin-top:20px;letter-spacing:.05em}
+
+/* Glitch Title */
+.glitch{position:relative;display:inline-block}
+.glitch::before,.glitch::after{content:attr(data-text);position:absolute;top:0;left:0;width:100%;height:100%;background:var(--bg);overflow:hidden}
+.glitch::before{left:1px;text-shadow:-1px 0 red;animation:glitch-anim 2s infinite linear alternate-reverse}
+.glitch::after{left:-1px;text-shadow:-1px 0 blue;animation:glitch-anim2 3s infinite linear alternate-reverse}
+@keyframes glitch-anim{0%{clip:rect(10px,9999px,50px,0)}20%{clip:rect(30px,9999px,80px,0)}40%{clip:rect(50px,9999px,20px,0)}60%{clip:rect(80px,9999px,60px,0)}80%{clip:rect(20px,9999px,90px,0)}100%{clip:rect(60px,9999px,10px,0)}}
+@keyframes glitch-anim2{0%{clip:rect(70px,9999px,30px,0)}20%{clip:rect(40px,9999px,70px,0)}40%{clip:rect(10px,9999px,40px,0)}60%{clip:rect(90px,9999px,80px,0)}80%{clip:rect(30px,9999px,50px,0)}100%{clip:rect(50px,9999px,20px,0)}}
+
+/* Mobile */
+@media (max-width:600px){
+  h1{font-size:16px}
+  .btn{padding:7px 10px;font-size:10.5px}
+  .glitch::before,.glitch::after{display:none}
+  .find{padding:12px}
+  .find-title{font-size:12px}
+}
+</style>
+</head>
+<body>
+<main>
+<nav class="topnav"><a href="index.html">&lt; RETURN</a><a href="music.html">[ AUDIO ]</a><a href="image.html">[ VISUAL ]</a><a href="code.html">[ CODE ]</a><a href="ecosystem.html">[ BIO ]</a><a href="aquarium.html">[ OCEAN ]</a><a href="galaxy.html">[ SPACE ]</a><a href="pair.html">[ MULTI ]</a></nav>
+<h1 class="glitch" data-text="RECOVERED FINDS">RECOVERED FINDS</h1>
+<p class="sub">[ SECTOR: ARCHIVE ] [ GITHUB SYNC ] [ REVIEWED BEFORE PUBLISHING ]</p>
+
+<nav class="tabs neu" aria-label="View tabs">
+  <button type="button" data-t="browse" class="on">&gt; BROWSE_LOGS</button>
+  <button type="button" data-t="share">&gt; SUBMIT_FIND</button>
+</nav>
+
+<section id="p-browse">
+  <div id="filters">
+    <button type="button" class="pill on" data-f="all">[ ALL ]</button>
+    <button type="button" class="pill" data-f="music">[ AUDIO ]</button>
+    <button type="button" class="pill" data-f="image">[ VISUAL ]</button>
+  </div>
+  <div id="list"><p class="msg">RETRIEVING LOGS...</p></div>
+</section>
+
+<section id="p-share" class="neu card free" hidden>
+  <div class="f">
+    <label for="title">FRAGMENT_TITLE</label>
+    <input type="text" id="title" maxlength="100" placeholder="A short name for your find">
+  </div>
+  <div class="f">
+    <label for="type">SECTOR_TYPE</label>
+    <select id="type">
+      <option value="music">AUDIO ARRAY</option>
+      <option value="image">VISUAL MATRIX</option>
+    </select>
+  </div>
+  <div class="f">
+    <label for="addr">ADDRESS (COPY FROM SECTOR)</label>
+    <textarea id="addr" rows="3" spellcheck="false" placeholder="Digits and letters"></textarea>
+  </div>
+  <div id="imgOpts" hidden>
+    <div class="f">
+      <label for="mode">COLOR_PROTOCOL</label>
+      <select id="mode">
+        <option value="mono">MONO (2)</option>
+        <option value="gray">GRAY (4)</option>
+        <option value="color">COLOR (16)</option>
+      </select>
+    </div>
+    <div class="f">
+      <label for="size">CELL_RESOLUTION</label>
+      <select id="size">
+        <option value="120">120 PX (16x9)</option>
+        <option value="60" selected>60 PX (32x18)</option>
+        <option value="40">40 PX (48x27)</option>
+        <option value="30">30 PX (64x36)</option>
+        <option value="24">24 PX (80x45)</option>
+      </select>
+    </div>
+  </div>
+  <div class="f">
+    <label for="note">NOTE (OPTIONAL)</label>
+    <textarea id="note" rows="3" maxlength="300" placeholder="Why is it interesting?"></textarea>
+  </div>
+  <p class="info" id="shareMsg" style="color:var(--muted);font-size:11px;margin:12px 0;">THIS OPENS GITHUB IN A NEW TAB. YOU NEED A GITHUB ACCOUNT. THE FIND APPEARS AFTER MAINTAINER APPROVAL.</p>
+  <div class="row" style="margin-top:12px">
+    <button type="button" class="btn primary" id="send">▶ INITIATE_UPLOAD</button>
+  </div>
+</section>
+</main>
+
+<iframe id="babel-preview" class="preview-frame" src="music.html#embed=1" allow="autoplay" title="Preview player" aria-hidden="true"></iframe>
+
+<script>
+(function(){
+"use strict";
+var REPO='sajadshahimn/Bable_gallery_music';
+var PX=[120,60,40,30,24],MODES=['mono','gray','color'];
+var $=function(i){return document.getElementById(i)};
+var all=[],filter='all';
+
+/* ---------- Preview Player ---------- */
+var player=$('babel-preview'), previewBtn=null, previewTimer=null;
+
+function stopPreview(){
+  if(previewBtn){previewBtn.classList.remove('playing');previewBtn.textContent='[ PLAY ]';previewBtn=null}
+  if(previewTimer){clearTimeout(previewTimer);previewTimer=null}
+  try{player.contentWindow.postMessage({action:'stop'},'*')}catch(e){}
+}
+
+function togglePreview(addr, btn){
+  if(previewBtn===btn){stopPreview();return}
+  stopPreview();
+  previewBtn=btn;btn.classList.add('playing');btn.textContent='[ STOP ]';
+  try{
+    player.contentWindow.postMessage({action:'set-loc',addr:addr},'*');
+    setTimeout(function(){
+      try{player.contentWindow.postMessage({action:'play'},'*')}catch(e){}
+    },150);
+  }catch(e){}
+  previewTimer=setTimeout(stopPreview,8000);
+}
+
+/* ---------- Parsing ---------- */
+function parse(it){
+ var b=String(it.body||''),t=(b.match(/^type:\s*(music|image)\s*$/im)||[])[1],a=(b.match(/^address:\s*([0-9A-Za-z]+)\s*$/m)||[])[1];
+ if(!t||!a||a.length>3000)return null;
+ t=t.toLowerCase();
+ var f={type:t,addr:a,title:String(it.title||'').slice(0,120),by:(it.user&&it.user.login)||'',url:it.html_url,date:it.created_at,comments:it.comments|0,id:it.number};
+ if(t==='image'){
+  var m=(b.match(/^mode:\s*(\w+)\s*$/im)||[])[1],s=parseInt((b.match(/^size:\s*(\d+)\s*$/im)||[])[1],10);
+  f.mode=MODES.indexOf(m)>=0?m:'color';f.size=PX.indexOf(s)>=0?s:60}
+ var n=b.match(/^note:\s*([\s\S]*)$/im);
+ f.note=n?n[1].trim().slice(0,300):'';
+ return f}
+function href(f){return f.type==='music'?'music.html#a='+f.addr:'image.html#a='+f.addr+'&m='+f.mode+'&s='+f.size}
+
+/* ---------- Render ---------- */
+function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e}
+function render(){
+ var box=$('list'),items=all.filter(function(f){return filter==='all'||f.type===filter});
+ box.innerHTML='';
+ if(!items.length){box.appendChild(el('p','msg','NO LOGS FOUND IN SECTOR'));return}
+ items.forEach(function(f){
+  var d=new Date(f.date);
+  var dateStr=isNaN(d)?'—':d.toISOString().slice(0,10);
+  var c=el('article','find'),acts=el('div','find-actions');
+
+  // Header
+  var header=el('div','find-header');
+  var h3=el('h3','find-title',f.title||'UNTITLED_FRAGMENT');
+  var ts=el('span','find-timestamp','[' + dateStr + ' // #' + String(f.id).padStart(4,'0') + ']');
+  header.appendChild(h3);
+  header.appendChild(ts);
+  c.appendChild(header);
+
+  // Meta
+  var meta=el('div','find-meta');
+  meta.innerHTML = 
+    '<span><span class="label">SECTOR:</span> <span class="value">' + (f.type==='music'?'AUDIO':'VISUAL') + '</span></span>' +
+    '<span><span class="label">AUTHOR:</span> <span class="value">@' + (f.by || 'UNKNOWN') + '</span></span>' +
+    '<span><span class="label">DISCUSSIONS:</span> <span class="value">' + f.comments + '</span></span>';
+  c.appendChild(meta);
+
+  // Note
+  if(f.note) c.appendChild(el('p','find-note','> "' + f.note + '"'));
+
+  // Preview Button
+  if(f.type==='music'){
+    var pv=el('button','play-btn','[ PLAY ]');
+    pv.type='button';
+    pv.title='Preview 8 seconds';
+    pv.setAttribute('aria-label','Preview tune');
+    pv.addEventListener('click',function(){togglePreview(f.addr,pv)});
+    acts.appendChild(pv);
+  }
+
+  // Open / Discuss
+  var a1=el('a','btn small','[ OPEN ]');
+  a1.href=href(f);
+  var a2=el('a','btn small','[ DISCUSS ]');
+  a2.href=f.url;a2.target='_blank';a2.rel='noopener noreferrer';
+  
+  acts.appendChild(a1);
+  acts.appendChild(a2);
+  c.appendChild(acts);
+  box.appendChild(c);
+ })}
+
+function load(){
+ fetch('https://api.github.com/repos/'+REPO+'/issues?labels=approved&state=open&per_page=50',{headers:{Accept:'application/vnd.github+json'}})
+ .then(function(r){if(!r.ok)throw new Error(r.status);return r.json()})
+ .then(function(list){all=list.filter(function(i){return !i.pull_request}).map(parse).filter(Boolean);render()})
+ .catch(function(){var b=$('list');b.innerHTML='';
+  var p=el('p','msg','CONNECTION FAILED. GITHUB API MAY BE RATE-LIMITED.');
+  b.appendChild(p)})}
+
+document.querySelectorAll('.tabs button').forEach(function(b){b.addEventListener('click',function(){showTab(b.dataset.t)})});
+function showTab(t){
+ document.querySelectorAll('.tabs button').forEach(function(x){x.classList.toggle('on',x.dataset.t===t)});
+ $('p-browse').hidden=(t!=='browse');$('p-share').hidden=(t!=='share')}
+$('filters').addEventListener('click',function(ev){var b=ev.target.closest('button');if(!b)return;
+ filter=b.dataset.f;document.querySelectorAll('#filters .pill').forEach(function(x){x.classList.toggle('on',x===b)});render()});
+$('type').addEventListener('change',function(){$('imgOpts').hidden=(this.value!=='image')});
+$('send').addEventListener('click',function(){
+ var title=$('title').value.trim(),type=$('type').value,addr=$('addr').value.replace(/\s/g,''),note=$('note').value.trim(),msg=$('shareMsg');
+ if(!title){msg.textContent='ERROR: TITLE REQUIRED.';msg.style.color='#ff4444';return}
+ if(!/^[0-9A-Za-z]+$/.test(addr)||addr.length>3000){msg.textContent='ERROR: INVALID ADDRESS.';msg.style.color='#ff4444';return}
+ var body='type: '+type+'\naddress: '+addr+'\n'+(type==='image'?'mode: '+$('mode').value+'\nsize: '+$('size').value+'\n':'')+'\nNote: '+note;
+ var url='https://github.com/'+REPO+'/issues/new?title='+encodeURIComponent(title)+'&body='+encodeURIComponent(body);
+ window.open(url,'_blank','noopener')});
+
+/* prefill from URL */
+var q=new URLSearchParams(location.search);
+if(q.get('share')){
+ showTab('share');
+ var t=q.get('type');if(t==='music'||t==='image'){$('type').value=t;$('imgOpts').hidden=(t!=='image')}
+ var a=q.get('a');if(a&&/^[0-9A-Za-z]+$/.test(a))$('addr').value=a;
+ var m=q.get('m');if(MODES.indexOf(m)>=0)$('mode').value=m;
+ var s=q.get('s');if(PX.indexOf(parseInt(s,10))>=0)$('size').value=s}
+load();
+})();
+</script>
+</body>
+</html>
